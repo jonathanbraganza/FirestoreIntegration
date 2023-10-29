@@ -125,8 +125,7 @@ def get_air():
         db = firestore.client()
         doc_ref = db.collection('hourlyData').document()
         doc_ref.set(extracted_data)
-        print("Document ID:", doc_ref.id)
-        print(time)
+        print("Document ID:", doc_ref.id," @ Time:" , time)
 
       else:
         print(
