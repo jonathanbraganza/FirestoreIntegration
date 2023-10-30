@@ -5,50 +5,51 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
 from flask import Flask
+import os
 
-cred = credentials.Certificate("serviceacckey.json")
+my_secret = os.environ['api_key']
+
+cred = credentials.Certificate({
+    "type":
+    "service_account",
+    "project_id":
+    os.environ['project_id'],
+    "private_key_id":
+    os.environ['private_key_id'],
+    "private_key":
+    os.environ['private_key'],
+    "client_email":
+    os.environ['client_email'],
+    "client_id":
+    os.environ['client_id'],
+    "auth_uri":
+    os.environ['auth_uri'],
+    "token_uri":
+    os.environ['token_uri'],
+    "auth_provider_x509_cert_url":
+    os.environ['auth_provider_x509_cert_url'],
+    "client_x509_cert_url":
+    os.environ['client_x509_cert_url'],
+    "universe_domain":
+    os.environ['universe_domain']
+})
+
 firebase_admin.initialize_app(cred)
-
-app = Flask(__name__)
-
-
-def save_api_key(api_key):
-  with open('api_key.json', 'w') as key_file:
-    json.dump({"key": api_key}, key_file)
-
-
-def load_api_key():
-  try:
-    with open('api_key.json', 'r') as key_file:
-      data = json.load(key_file)
-      return data.get("key", None)
-  except FileNotFoundError:
-    return None
 
 
 def convert_to_lower_no_spaces(s):
   return s.lower().replace(" ", "")
 
 
-# Read city names from a file
-city_names = []
-with open('city_zip.txt', 'r') as file:
-  for line in file:
-    city_names.append(line.strip())
-
-api_key = load_api_key()
-
-if not api_key:
-  api_key = input("Enter your WeatherAPI key: ")
-  save_api_key(api_key)
-
-api_url = "http://api.weatherapi.com/v1/current.json"
-aqi = "yes"
-
-
 def get_air():
+  api_url = "http://api.weatherapi.com/v1/current.json"
+  aqi = "yes"
+  city_names = []
+  with open('city_zip.txt', 'r') as file:
+    for line in file:
+      city_names.append(line.strip())
   for location in city_names:
-    params = {"key": api_key, "q": location, "aqi": aqi}
+    params = {"key": my_secret, "q": location, "aqi": aqi}
 
     try:
       response = requests.get(api_url, params=params)
@@ -120,12 +121,11 @@ def get_air():
         }
 
         extracted_data_json = json.dumps(extracted_data, indent=4)
-        # print(f"Data for {location}:\n{extracted_data_json}")
 
         db = firestore.client()
         doc_ref = db.collection('hourlyData').document()
         doc_ref.set(extracted_data)
-        print("Document ID:", doc_ref.id," @ Time:" , time)
+        print("Document ID:", doc_ref.id, "@ Time: ", time)
 
       else:
         print(
@@ -133,6 +133,9 @@ def get_air():
         )
     except requests.RequestException as e:
       print(f"Request for {location} failed: {e}")
+
+
+app = Flask(__name__)
 
 
 @app.route('/')
